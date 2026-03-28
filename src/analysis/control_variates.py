@@ -2,12 +2,12 @@ import polars as pl
 import numpy as np
 
 class ControlVariates:
-    """Hiệu chỉnh bằng Biến kiểm soát (Control Variates)"""
+    """Control Variates Adjustment"""
     
     @staticmethod
     def calculate_theta(df: pl.DataFrame, x_col="X", y_col="Y") -> float:
         if len(df) < 2:
-            return 0.35 # Fix cứng nếu thiếu dữ liệu
+            return 0.35 # Hardcode if insufficient data
         
         x = df[x_col].to_numpy()
         y = df[y_col].to_numpy()
@@ -20,7 +20,7 @@ class ControlVariates:
         return theta if not np.isnan(theta) else 0.35
 
     @staticmethod
-    def apply_cuped(df: pl.DataFrame, theta: float, mu_x: float) -> pl.DataFrame:
+    def apply_control_variates(df: pl.DataFrame, theta: float, mu_x: float) -> pl.DataFrame:
         # Y_adj = Y - theta * (X_i - mu_X)
         df = df.with_columns(
             (pl.col("Y") - theta * (pl.col("X") - mu_x)).alias("Y_adj")

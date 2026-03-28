@@ -20,7 +20,7 @@ class FinalDecisionMatrix:
         df_posts = NumericalEngine.calculate_actual_score(df_posts)
         df_posts = NumericalEngine.predict_expected_score(df_posts)
         
-        print("\n=== 3. CUPED ANALYSIS ===")
+        print("\n=== 3. CONTROL VARIATES ANALYSIS ===")
         # Simulate last post as current
         df_hist = df_posts[:-1]
         latest_post = df_posts[-1:]
@@ -28,7 +28,7 @@ class FinalDecisionMatrix:
         mu_x = df_hist["X"].mean()
         theta = ControlVariates.calculate_theta(df_hist, "X", "Y")
         
-        latest_post_adj = ControlVariates.apply_cuped(latest_post, theta, mu_x)
+        latest_post_adj = ControlVariates.apply_control_variates(latest_post, theta, mu_x)
         y_adj = latest_post_adj["Y_adj"][0]
         
         var_y_adj, ci_margin = ControlVariates.calculate_ci(df_hist, theta)
@@ -46,15 +46,15 @@ class FinalDecisionMatrix:
         print("\n=== 5. FINAL DECISION ===")
         # Decision Matrix
         if lower_bound > mu_x and semantic_signal in ["Good Feature", "Neutral"]:
-            decision = "Keep up (Scale): Tăng ngân sách"
+            decision = "Keep up (Scale): Increase budget"
         elif upper_bound < mu_x and semantic_signal in ["Good Feature", "Neutral"]:
-            decision = "Increase tensity: Đẩy Seeding"
+            decision = "Increase tensity: Push seeding"
         elif lower_bound > mu_x and semantic_signal == "Bad Feature":
-            decision = "PR Crisis (Kill): Dừng chiến dịch"
+            decision = "PR Crisis (Kill): Stop campaign"
         elif upper_bound < mu_x and semantic_signal == "Bad Feature":
-            decision = "Minor tweak: Sửa nội dung"
+            decision = "Minor tweak: Edit content"
         else:
-            decision = "Wait and see (Không nằm trong rule cố định)"
+            decision = "Wait and see (Not in fixed rule)"
             
         print(f"-> DECISION: {decision}")
 

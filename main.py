@@ -1,7 +1,7 @@
 from src.decision_orchestrator import FinalDecisionMatrix
 
 def main():
-    print("Khởi động Data-Analyst Agent (Chạy với Mock Data Engine)...\n")
+    print("Starting Data-Analyst Agent (Running with Mock Data Engine)...\n")
     agent = FinalDecisionMatrix()
     agent.process_pipeline()
 

@@ -1,7 +1,7 @@
 import numpy as np
 
 class SemanticEngine:
-    """Động cơ phân tích ngữ nghĩa (Semantic Engine)"""
+    """Semantic Engine"""
     
     def __init__(self):
         # Placeholder for Qdrant and HDBSCAN
@@ -14,11 +14,11 @@ class SemanticEngine:
         """
         # Mocking semantic logic based on generated hints
         sentiments = [c['sentiment_hint'] for c in comments]
-        if "Từ khóa rủi ro" in sentiments:
+        if "Risk keyword" in sentiments:
             return "Bad Feature"
         
-        good_count = sentiments.count("Tích cực")
-        bad_count = sentiments.count("Tiêu cực")
+        good_count = sentiments.count("Positive")
+        bad_count = sentiments.count("Negative")
         
         if good_count > bad_count:
             return "Good Feature"

@@ -1,5 +1,5 @@
 class PostgresDB:
-    # Bỏ qua logic kết nối thật để test offline
+    # Skip real connection logic for offline testing
     def __init__(self, dsn):
         self.dsn = dsn
         

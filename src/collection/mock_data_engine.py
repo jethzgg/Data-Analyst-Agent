@@ -3,7 +3,7 @@ import numpy as np
 import random
 
 class MockDataEngine:
-    """Module Sinh dữ liệu mẫu (Mock Data Engine)"""
+    """Mock Data Engine Module"""
     @staticmethod
     def generate_posts(n_posts=100) -> pl.DataFrame:
         data = []
@@ -31,7 +31,7 @@ class MockDataEngine:
     @staticmethod
     def generate_comments() -> list:
         # Semantic Mocking
-        sentiments = ["Tích cực", "Tiêu cực", "Trung tính", "Từ khóa rủi ro"]
+        sentiments = ["Positive", "Negative", "Neutral", "Risk keyword"]
         comments = []
         for _ in range(50):
             comments.append({"text": "Mock comment", "sentiment_hint": random.choice(sentiments)})
