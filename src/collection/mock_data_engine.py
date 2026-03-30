@@ -1,38 +1,15 @@
 import polars as pl
-import numpy as np
-import random
 
 class MockDataEngine:
     """Mock Data Engine Module"""
+    
     @staticmethod
-    def generate_posts(n_posts=100) -> pl.DataFrame:
-        data = []
-        for i in range(n_posts):
-            format_type = random.choice(["Video", "Post", "Image"])
-            impressions = int(np.random.normal(50000, 15000))
-            if impressions < 1000: impressions = 1000
-            
-            reactions = int(impressions * random.uniform(0.01, 0.05))
-            comments = int(impressions * random.uniform(0.005, 0.02))
-            shares = int(impressions * random.uniform(0.001, 0.01))
-            viewers_75 = int(impressions * random.uniform(0.1, 0.4)) if format_type == "Video" else 0
-            
-            data.append({
-                "post_id": f"post_{i}",
-                "format": format_type,
-                "impressions": impressions,
-                "reactions": reactions,
-                "comments": comments,
-                "shares": shares,
-                "viewers_75": viewers_75
-            })
-        return pl.DataFrame(data)
+    def generate_posts(n_posts=None) -> pl.DataFrame:
+        """Loads mocked posts from a static CSV file instead of generating them randomly."""
+        return pl.read_csv("test_data/mock_posts.csv")
 
     @staticmethod
     def generate_comments() -> list:
-        # Semantic Mocking
-        sentiments = ["Positive", "Negative", "Neutral", "Risk keyword"]
-        comments = []
-        for _ in range(50):
-            comments.append({"text": "Mock comment", "sentiment_hint": random.choice(sentiments)})
-        return comments
+        """Loads mocked comments from a static CSV file and returns them as a list of dicts."""
+        df = pl.read_csv("test_data/mock_comments.csv")
+        return df.to_dicts()
