@@ -18,30 +18,72 @@ class NumericalEngine:
         return df
 
     @staticmethod
-    def predict_expected_score(df: pl.DataFrame) -> pl.DataFrame:
-        # 3.2. Predict Expected Score (Xi)
-        # Engagement_Rate = (reactions + comments + shares) / impressions
-        df = df.with_columns(
+    def train_historical_model(df_hist: pl.DataFrame):
+        # Calculate Y for history
+        df_hist = NumericalEngine.calculate_actual_score(df_hist)
+        
+        # Features
+        df_hist = df_hist.with_columns(
             ((pl.col("reactions") + pl.col("comments") + pl.col("shares")) / pl.col("impressions")).alias("engagement_rate")
         )
+        X_data = df_hist.select(["impressions", "engagement_rate"]).to_numpy()
         
-        # Prepare features
-        X_data = df.select(["impressions", "engagement_rate"]).to_numpy()
-        
-        # Standardization
+        # Scaling
         scaler = StandardScaler()
         X_scaled = scaler.fit_transform(X_data)
         
-        # Prediction (ML) - Using dummy target for training since this is Cold Start proxy
-        y_dummy = df.select("Y").to_numpy().ravel()
+        # Train ML
+        y_dummy = df_hist.select("Y").to_numpy().ravel()
         model = SGDRegressor(max_iter=1000, tol=1e-3)
         model.fit(X_scaled, y_dummy)
         
+        # Predict X_hist
         predicted_X = model.predict(X_scaled)
-        global_average = df["Y"].mean()
+        df_hist = df_hist.with_columns(pl.Series("X_hist", predicted_X))
         
-        # Smoothing
-        smoothed_X = (predicted_X + global_average) / 2
+        # Format Means (Xi for lookup) & mu_X
+        # Xi: trung bình cumulative score của từng thể loại i
+        format_means = df_hist.group_by("format").agg(pl.col("X_hist").mean().alias("Xi"))
         
-        df = df.with_columns(pl.Series("X", smoothed_X))
-        return df
+        # mu_X: trung bình score của tất cả thể loại trong lịch sử
+        mu_X = df_hist["X_hist"].mean()
+        df_hist = df_hist.with_columns(pl.lit(mu_X).alias("mu_X"))
+        df_hist = df_hist.join(format_means, on="format", how="left")
+        
+        return df_hist, format_means, mu_X, model, scaler
+        
+    @staticmethod
+    def evaluate_current_post(df_cur: pl.DataFrame, format_means: pl.DataFrame, mu_X: float, model: SGDRegressor, scaler: StandardScaler):
+        df_cur = NumericalEngine.calculate_actual_score(df_cur)
+        
+        df_cur = df_cur.with_columns(
+            ((pl.col("reactions") + pl.col("comments") + pl.col("shares")) / pl.col("impressions")).alias("engagement_rate")
+        )
+        
+        # Process each row (assuming mostly 1 row for current post)
+        X_cur = []
+        for row in df_cur.iter_rows(named=True):
+            f_format = row["format"]
+            
+            # Check if format exists in history (Lookup)
+            match_format = format_means.filter(pl.col("format") == f_format)
+            
+            if len(match_format) > 0:
+                # Lookup
+                xi_val = match_format["Xi"][0]
+                print(f"[NumericalEngine] Format '{f_format}' Found in history. Lookup Xi: {xi_val:.4f}")
+            else:
+                # Cold Start (Predict using ML)
+                cur_features = np.array([[row["impressions"], row["engagement_rate"]]])
+                cur_scaled = scaler.transform(cur_features)
+                xi_val = model.predict(cur_scaled)[0]
+                print(f"[NumericalEngine] COLD START for format '{f_format}'. Predicted Xi via ML: {xi_val:.4f}")
+            
+            X_cur.append(xi_val)
+            
+        df_cur = df_cur.with_columns(
+            pl.Series("Xi", X_cur),
+            pl.lit(mu_X).alias("mu_X")
+        )
+        
+        return df_cur

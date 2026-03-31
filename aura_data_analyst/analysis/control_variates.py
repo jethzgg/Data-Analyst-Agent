@@ -20,18 +20,18 @@ class ControlVariates:
         return theta if not np.isnan(theta) else 0.35
 
     @staticmethod
-    def apply_control_variates(df: pl.DataFrame, theta: float, mu_x: float) -> pl.DataFrame:
+    def apply_control_variates(df: pl.DataFrame, theta: float, mu_x: float, x_col="Xi") -> pl.DataFrame:
         # Y_adj = Y - theta * (X_i - mu_X)
         df = df.with_columns(
-            (pl.col("Y") - theta * (pl.col("X") - mu_x)).alias("Y_adj")
+            (pl.col("Y") - theta * (pl.col(x_col) - mu_x)).alias("Y_adj")
         )
         return df
 
     @staticmethod
-    def calculate_ci(df: pl.DataFrame, theta: float) -> tuple:
+    def calculate_ci(df: pl.DataFrame, theta: float, x_col="X_hist") -> tuple:
         var_y = df["Y"].var() if len(df) > 1 else 0
-        var_x = df["X"].var() if len(df) > 1 else 0
-        cov_xy = np.cov(df["X"].to_numpy(), df["Y"].to_numpy())[0, 1] if len(df) > 1 else 0
+        var_x = df[x_col].var() if len(df) > 1 else 0
+        cov_xy = np.cov(df[x_col].to_numpy(), df["Y"].to_numpy())[0, 1] if len(df) > 1 else 0
         
         # Var(Y_adj) = Var(Y) + theta^2 * Var(X) - 2 * theta * Cov(X, Y)
         var_y_adj = var_y + (theta**2 * var_x) - (2 * theta * cov_xy)

@@ -1,52 +1,68 @@
 # Product Requirement Document (PRD): Data-Analyst Agent (DAA)
 
 ## 1. Tổng quan (Overview)
-Data-Analyst Agent (DAA) là thành phần chịu trách nhiệm xử lý, chuẩn hóa và đánh giá hiệu suất của từng bài đăng độc lập. Thay vì sử dụng dữ liệu thô (raw data) thường bị nhiễu bởi các yếu tố ngoại cảnh, DAA áp dụng kỹ thuật **Control Variates (Biến kiểm soát)** kết hợp với **Machine Learning** để xác định giá trị chất lượng thực chất (core quality) của nội dung.
+Data-Analyst Agent (DAA) là hệ thống phân tích và chuẩn hóa hiệu suất nội dung, giúp loại bỏ các yếu tố ngoại cảnh (nhiễu từ xu hướng) để tìm ra chất lượng cốt lõi của bài đăng. Hệ thống sử dụng kỹ thuật **Control Variates (Biến kiểm soát)** và cơ chế dự báo **Cold Start** để đánh giá công bằng cho cả nội dung cũ và mới.
 
 ## 2. Module Sinh dữ liệu mẫu (Mock Data Engine)
-Hệ thống tích hợp trình sinh dữ liệu giả lập cho từng bài viết để phục vụ demo và kiểm thử luồng logic mà không cần kết nối API thực tế:
-* **Numerical Mocking**: Tự động gán bộ chỉ số tương tác thô ($Reactions, Comments, Shares, Viewers\_75, Impressions$) cho một bài đăng cụ thể.
-* **Semantic Mocking**: Sinh danh sách 50-100 bình luận giả lập với đa dạng sắc thái từ tích cực, tiêu cực đến các từ khóa rủi ro truyền thông.
+Hệ thống tự động tạo dữ liệu giả lập cho từng bài viết để phục vụ demo và kiểm thử luồng logic:
+* **Numerical Mocking**: Sinh các chỉ số tương tác thô ($Reactions, Comments, Shares, Viewers\_75, Impressions$).
+* **Semantic Mocking**: Sinh danh sách 50-100 bình luận giả lập với nhiều sắc thái cảm xúc khác nhau.
 
-## 3. Động cơ xử lý dữ liệu số (Numerical Engine)
-Đây là lõi tính toán của Agent, tập trung vào việc khử nhiễu và dự báo kỳ vọng.
+## 3. Workflow Xử lý dữ liệu Numerical (Trọng tâm)
 
-### 3.1. Tính toán Hiệu suất thực tế ($Y$)
-Tỷ lệ tương tác được tính toán dựa trên trọng số ưu tiên hành động của người dùng đối với từng loại định dạng:
+Quy trình xác định hiệu suất thực chất của bài đăng thông qua 4 bước logic:
+
+### Bước 1: Tính toán Hiệu suất thực tế ($Y$)
+DAA tính toán tỷ lệ tương tác dựa trên trọng số hành động của người dùng:
 * **Đối với Video**: $Y = \frac{1 \cdot Reactions + 3 \cdot Comments + 5 \cdot Shares + 2 \cdot Viewers\_75}{Impressions}$.
-* **Đối với Bài viết (Post/Image)**: $Y = \frac{1 \cdot Reactions + 3 \cdot Comments + 5 \cdot Shares}{Impressions}$.
+* **Đối với Bài viết**: $Y = \frac{1 \cdot Reactions + 3 \cdot Comments + 5 \cdot Shares}{Impressions}$.
 
-### 3.2. Dự báo Điểm kỳ vọng của thể loại ($X_i$)
-Hệ thống xử lý bài toán **Cold Start** (nội dung mới) bằng phương pháp học máy tăng cường:
-* **Chuẩn hóa**: Sử dụng `StandardScaler` để đưa các đặc trưng về cùng một phân phối.
-* **Dự báo (ML)**: Sử dụng mô hình `SGDRegressor` để ước lượng $X_i$ dựa trên quy mô hiển thị ($Impressions$) và tỷ lệ tương tác thô ($Engagement\_Rate$).
-* **Làm mịn (Smoothing)**: Giá trị $X_i$ cuối cùng là trung bình giữa giá trị dự báo và trung bình toàn cục của Page: $X_i = \frac{Predicted\_X + Global\_Average}{2}$.
+### Bước 2: Xác định Điểm kỳ vọng ($X_i$) - Cơ chế Rẽ nhánh
+Hệ thống thực hiện kiểm tra dữ liệu để xác định "điểm chấp" kỳ vọng cho bài đăng:
 
-### 3.3. Hiệu chỉnh bằng Biến kiểm soát (Control Variates)
-* **Hệ số kiểm soát ($\theta$)**: Tính toán từ dữ liệu lịch sử: $\theta = \frac{Cov(X, Y)}{Var(X)}$ (Nếu thiếu dữ liệu, fix cứng ở mức 0.35).
-* **Hiệu suất thực chất ($Y_{adj}$)**: Triệt tiêu "điểm chấp" của xu hướng: $Y_{adj} = Y - \theta \cdot (X_i - \mu_X)$ với $\mu_X$ là trung bình tương tác toàn page.
-* **Khoảng tin cậy (CI)**: Tính toán Khoảng tin cậy 90% dựa trên phương sai đã tối ưu: $Var(Y_{adj}) = Var(Y) + \theta^2 \cdot Var(X) - 2\theta \cdot Cov(X, Y)$.
+* **Trường hợp A: Database Lookup (Đã có lịch sử)**:
+    * Nếu thể loại nội dung $i$ đã tồn tại trong Database, hệ thống tra cứu và lấy giá trị Trung bình tích lũy ($Cumulative\ Mean$) của thể loại đó làm $X_i$.
+* **Trường hợp B: Cold Start Machine Learning (Thể loại mới)**:
+    * Nếu thể loại $i$ chưa từng xuất hiện (ví dụ: Lần đầu đăng Reels), hệ thống kích hoạt luồng dự báo:
+        1. **Chuẩn hóa**: Sử dụng `StandardScaler` để xử lý các đặc trưng ($Impressions, Engagement\_Rate$).
+        2. **Dự báo**: Sử dụng mô hình `SGDRegressor` để ước lượng giá trị kỳ vọng $X_{cur}$.
+        3. **Làm mịn (Smoothing)**: Gán tạm $X_i = \frac{X_{cur} + Global\ Average}{2}$ để đảm bảo tính ổn định cho nội dung mới.
+
+### Bước 3: Hiệu chỉnh Hiệu suất thực chất ($Y_{adj}$)
+Sử dụng kỹ thuật **Control Variates** để triệt tiêu nhiễu xu hướng:
+* **Công thức**: $Y_{adj} = Y - \theta \cdot (X_i - \mu_X)$.
+* **Trong đó**:
+    * $\theta$: Hệ số kiểm soát (tính bằng Hiệp phương sai / Phương sai lịch sử).
+    * $\mu_X$: Trung bình tương tác của toàn bộ trang (Baseline toàn cục).
+
+### Bước 4: Khoảng tin cậy và Ra quyết định
+DAA tính toán Khoảng tin cậy ($CI$) 90% để đưa ra lệnh điều phối:
+* **Phương sai tối ưu**: $Var(Y_{adj}) = Var(Y) + \theta^2 \cdot Var(X) - 2\theta \cdot Cov(X, Y)$.
+* **Logic rẽ nhánh**: 
+    * Nếu Cận dưới $CI > \mu_X \rightarrow$ **Volume Up**.
+    * Nếu Cận trên $CI < \mu_X \rightarrow$ **Volume Down**.
 
 ## 4. Động cơ phân tích ngữ nghĩa (Semantic Engine)
-* **Xử lý văn bản**: Làm sạch bằng **Text normalizer** và lưu trữ dưới dạng vector trong **Qdrant DB**.
-* **Phân cụm**: Sử dụng thuật toán **HDBSCAN** để nhóm các bình luận tương đồng.
-* **Phân loại cảm xúc**: LLM trích xuất 10 bình luận tâm cụm để xác định các đặc tính: **Good Feature**, **Bad Feature**, hoặc **Neutral**.
+* **Xử lý**: Làm sạch bằng **Text normalizer** và nhúng vector vào **Qdrant DB**.
+* **Phân cụm**: Dùng **HDBSCAN** để nhóm các ý kiến tương đồng và chọn ra 10 comment tâm cụm.
+* **Phân loại**: LLM định danh cụm thành **Good Feature**, **Bad Feature**, hoặc **Neutral**.
 
-## 5. Ma trận Quyết định Tổng hợp (Final Decision)
-DAA kết hợp tín hiệu Số liệu và Ngữ nghĩa để rẽ nhánh chiến lược cho **Strategist Agent**:
+## 5. Ma trận Quyết định (Decision Matrix)
+Kết hợp tín hiệu Số liệu và Ngữ nghĩa để rẽ nhánh chiến lược cho **Strategist Agent**:
 
-| Tín hiệu Số liệu ($CI$ vs $\mu_X$) | Tín hiệu Ngữ nghĩa | Hành động (Action) |
+| Tín hiệu Số liệu | Tín hiệu Ngữ nghĩa | Hành động (Action) |
 | :--- | :--- | :--- |
-| **Cận dưới $CI > \mu_X$** | Đa số Good Features | **Keep up (Scale)**: Tăng ngân sách |
-| **Cận trên $CI < \mu_X$** | Đa số Good Features | **Increase tensity**: Đẩy Seeding |
-| **Cận dưới $CI > \mu_X$** | Xuất hiện Bad Features rủi ro | **PR Crisis (Kill)**: Dừng chiến dịch |
-| **Cận trên $CI < \mu_X$** | Đa số Bad Features | **Minor tweak**: Sửa nội dung |
+| **Volume Up** | Đa số Good Features | **Keep up (Scale)**: Tăng ngân sách |
+| **Volume Down** | Đa số Good Features | **Increase tensity**: Đẩy Seeding, giữ tiền |
+| **Volume Up** | Có Bad Features rủi ro | **PR Crisis (Kill)**: Dừng chiến dịch ngay lập tức |
+| **Volume Down** | Đa số Bad Features | **Minor tweak**: Tinh chỉnh lại nội dung |
 
 ## 6. Yêu cầu Công nghệ (Tech Stack)
 * **Ngôn ngữ**: Python.
-* **Xử lý dữ liệu**: Polars.
+* **Xử lý số liệu**: Polars.
 * **Machine Learning**: `scikit-learn` (`SGDRegressor`, `StandardScaler`).
-* **Vector Database**: ChromaDB.
+* **Vector DB**: ChromaDB.
+
 ## 7. Hướng dẫn sử dụng (Usage in Multi-Agent System)
 
 Có thể cài đặt repository này như một Python Package và sử dụng bên trong các hệ thống Multi-Agent lớn hơn (ví dụ như gọi dưới dạng công cụ của workflow Orchestrator).
