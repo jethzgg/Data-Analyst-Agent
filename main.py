@@ -1,9 +1,10 @@
-from src.decision_orchestrator import FinalDecisionMatrix
+from aura_data_analyst.decision_orchestrator import FinalDecisionMatrix
 
 def main():
     print("Starting Data-Analyst Agent (Running with Mock Data Engine)...\n")
     agent = FinalDecisionMatrix()
-    agent.process_pipeline()
+    result = agent.process_pipeline()
+    print("\n[Result Object]", result)
 
 if __name__ == "__main__":
     main()
