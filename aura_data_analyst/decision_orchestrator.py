@@ -10,7 +10,7 @@ class FinalDecisionMatrix:
         self.pg_db = PostgresDB("postgres://mock")
         self.semantic_engine = SemanticEngine()
         
-    def analyze(self, posts_csv_path=None, comments_csv_path=None):
+    def analyze(self, posts_csv_path=None, comments_csv_path=None, ci_level=0.95):
         print("\n=== 1. MOCK DATA ENGINE ===")
         df_posts = MockDataEngine.generate_posts(100, csv_path=posts_csv_path)
         comments = MockDataEngine.generate_comments(csv_path=comments_csv_path)
@@ -36,13 +36,13 @@ class FinalDecisionMatrix:
         
         y_adj = latest_post_adj["Y_adj"][0]
         
-        var_y_adj, ci_margin = ControlVariates.calculate_ci(df_hist, theta)
+        var_y_adj, ci_margin = ControlVariates.calculate_ci(df_hist, theta, ci_level=ci_level)
         
         lower_bound = y_adj - ci_margin
         upper_bound = y_adj + ci_margin
         
         print(f"Y_adj: {y_adj:.4f}, mu_X: {mu_x:.4f}")
-        print(f"Confidence Interval 90%: [{lower_bound:.4f} - {upper_bound:.4f}]")
+        print(f"Confidence Interval {int(ci_level * 100)}%: [{lower_bound:.4f} - {upper_bound:.4f}]")
         
         print("\n=== 4. SEMANTIC ENGINE ===")
         try:

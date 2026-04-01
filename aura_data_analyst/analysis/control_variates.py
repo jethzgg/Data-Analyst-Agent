@@ -1,5 +1,6 @@
 import polars as pl
 import numpy as np
+from scipy.stats import norm
 
 class ControlVariates:
     """Control Variates Adjustment"""
@@ -28,7 +29,7 @@ class ControlVariates:
         return df
 
     @staticmethod
-    def calculate_ci(df: pl.DataFrame, theta: float, x_col="X_hist") -> tuple:
+    def calculate_ci(df: pl.DataFrame, theta: float, x_col="X_hist", ci_level: float = 0.95) -> tuple:
         var_y = df["Y"].var() if len(df) > 1 else 0
         
         # Calculate Pearson correlation coefficient rho
@@ -45,6 +46,9 @@ class ControlVariates:
         # Approximate SE and CI
         n = len(df)
         se = np.sqrt(max(var_y_adj, 0) / n) if n > 0 else 0
-        ci_90 = 1.645 * se # 90% CI
         
-        return var_y_adj, ci_90
+        # Calculate Z-score based on the desired Confidence Level
+        z_score = norm.ppf((1 + ci_level) / 2)
+        ci_margin = z_score * se 
+        
+        return var_y_adj, ci_margin

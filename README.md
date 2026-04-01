@@ -40,7 +40,7 @@ Sử dụng kỹ thuật **Control Variates** để triệt tiêu nhiễu xu hư
     * $\mu_X$: Trung bình tương tác của toàn bộ trang (Baseline toàn cục).
 
 ### Bước 4: Khoảng tin cậy và Ra quyết định
-DAA tính toán Khoảng tin cậy ($CI$) 90% để đưa ra lệnh điều phối:
+DAA tính toán Khoảng tin cậy ($CI$) tự động (Mặc định 95%) để đưa ra lệnh điều phối:
 * **Phương sai tối ưu**: $Var(Y_{adj}) = Var(Y_{hist}) \times (1 - \rho^2)$.
 * **Trong đó**: $\rho$ là hệ số tương quan Pearson giữa Lịch sử ($Y_{hist}$) và Kỳ vọng ($X_{hist}$).
 * **Logic rẽ nhánh**: 
@@ -89,10 +89,11 @@ agent = DataAnalystAgent(
     embedding_model="gemini-embedding-001" 
 )
 
-# 2. Xử lý dữ liệu
+# 2. Xử lý dữ liệu (Hỗ trợ cấu hình mức rủi ro CI: 80% -> 99%)
 result = agent.analyze(
     posts_csv_path="test_data/mock_posts.csv",  
-    comments_csv_path="test_data/mock_comments.csv"
+    comments_csv_path="test_data/mock_comments.csv",
+    ci_level=0.95 # Mặc định là 0.95 (95%), có thể truyền 0.90 hoặc tuỳ ý
 )
 
 # 3. Sử dụng Output trả về
