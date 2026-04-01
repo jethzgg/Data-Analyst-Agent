@@ -10,7 +10,7 @@ class FinalDecisionMatrix:
         self.pg_db = PostgresDB("postgres://mock")
         self.semantic_engine = SemanticEngine()
         
-    def process_pipeline(self, posts_csv_path=None, comments_csv_path=None):
+    def analyze(self, posts_csv_path=None, comments_csv_path=None):
         print("\n=== 1. MOCK DATA ENGINE ===")
         df_posts = MockDataEngine.generate_posts(100, csv_path=posts_csv_path)
         comments = MockDataEngine.generate_comments(csv_path=comments_csv_path)
@@ -81,4 +81,4 @@ class FinalDecisionMatrix:
 
 if __name__ == "__main__":
     A = FinalDecisionMatrix()
-    A.process_pipeline()
+    A.analyze()

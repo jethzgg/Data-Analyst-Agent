@@ -27,6 +27,10 @@ Hệ thống thực hiện kiểm tra dữ liệu để xác định "điểm ch
         1. **Chuẩn hóa**: Sử dụng `StandardScaler` để xử lý các đặc trưng ($Impressions, Engagement\_Rate$).
         2. **Dự báo**: Sử dụng mô hình `SGDRegressor` để ước lượng giá trị kỳ vọng $X_{cur}$.
         3. **Làm mịn (Smoothing)**: Gán tạm $X_i = \frac{X_{cur} + Global\ Average}{2}$ để đảm bảo tính ổn định cho nội dung mới.
+* **Trường hợp C: Extreme Cold Start (Lịch sử rỗng hoặc có ít hơn 2 bài đăng)**:
+    * Nếu tài khoản/kênh hoàn toàn mới, số lượng bài đăng $N < 2$, dữ liệu sẽ không đủ điều kiện thống kê để tính phương sai hoặc huấn luyện Machine Learning.
+    * **Xử lý ngắt mạch (Fallback)**: Hệ thống bypass AI, gán baseline $\mu_X = 0$, hệ số kiểm soát $\theta = 0$, và kỳ vọng $X_i = Y_{cur}$.
+    * **Kết quả**: Hiệu suất điều chỉnh rơi về mức hiệu suất tuyệt đối của chính bài đăng đó ($Y_{adj} = Y_{cur}$), chặn việc lỗi gián đoạn do thiếu dữ liệu. Khoảng tin cậy mở rộng chưa đánh giá mức độ rủi ro ($\pm 0$).
 
 ### Bước 3: Hiệu chỉnh Hiệu suất thực chất ($Y_{adj}$)
 Sử dụng kỹ thuật **Control Variates** để triệt tiêu nhiễu xu hướng:
@@ -37,7 +41,8 @@ Sử dụng kỹ thuật **Control Variates** để triệt tiêu nhiễu xu hư
 
 ### Bước 4: Khoảng tin cậy và Ra quyết định
 DAA tính toán Khoảng tin cậy ($CI$) 90% để đưa ra lệnh điều phối:
-* **Phương sai tối ưu**: $Var(Y_{adj}) = Var(Y) + \theta^2 \cdot Var(X) - 2\theta \cdot Cov(X, Y)$.
+* **Phương sai tối ưu**: $Var(Y_{adj}) = Var(Y_{hist}) \times (1 - \rho^2)$.
+* **Trong đó**: $\rho$ là hệ số tương quan Pearson giữa Lịch sử ($Y_{hist}$) và Kỳ vọng ($X_{hist}$).
 * **Logic rẽ nhánh**: 
     * Nếu Cận dưới $CI > \mu_X \rightarrow$ **Volume Up**.
     * Nếu Cận trên $CI < \mu_X \rightarrow$ **Volume Down**.
@@ -85,7 +90,7 @@ agent = DataAnalystAgent(
 )
 
 # 2. Xử lý dữ liệu
-result = agent.process_pipeline(
+result = agent.analyze(
     posts_csv_path="test_data/mock_posts.csv",  
     comments_csv_path="test_data/mock_comments.csv"
 )

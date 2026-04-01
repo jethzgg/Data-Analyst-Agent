@@ -8,17 +8,32 @@ class NumericalEngine:
     
     @staticmethod
     def calculate_actual_score(df: pl.DataFrame) -> pl.DataFrame:
-        # 3.1. Calculate Actual Score (Y)
+        # 3.1. Calculate Actual Score (Y) - Weighted Average Rate
+        # Video weight sum: 1 + 3 + 5 + 2 = 11
+        # Other weight sum: 1 + 3 + 5 = 9
         df = df.with_columns(
             pl.when(pl.col("format") == "Video")
-            .then((1 * pl.col("reactions") + 3 * pl.col("comments") + 5 * pl.col("shares") + 2 * pl.col("viewers_75")) / pl.col("impressions"))
-            .otherwise((1 * pl.col("reactions") + 3 * pl.col("comments") + 5 * pl.col("shares")) / pl.col("impressions"))
+            .then((1 * pl.col("reactions") + 3 * pl.col("comments") + 5 * pl.col("shares") + 2 * pl.col("viewers_75")) / (pl.col("impressions") * 11))
+            .otherwise((1 * pl.col("reactions") + 3 * pl.col("comments") + 5 * pl.col("shares")) / (pl.col("impressions") * 9))
             .alias("Y")
         )
         return df
 
     @staticmethod
     def train_historical_model(df_hist: pl.DataFrame):
+        # Prevent crash if historical data is extremely small or empty
+        if len(df_hist) < 2:
+            print("[NumericalEngine] Warning: Not enough historical data. Bypassing ML initialization.")
+            df_hist = NumericalEngine.calculate_actual_score(df_hist)
+            if "X_hist" not in df_hist.columns:
+                df_hist = df_hist.with_columns(pl.lit(0.0).alias("X_hist"))
+            if "mu_X" not in df_hist.columns:
+                df_hist = df_hist.with_columns(pl.lit(0.0).alias("mu_X"))
+            if "Xi" not in df_hist.columns:
+                df_hist = df_hist.with_columns(pl.lit(0.0).alias("Xi"))
+            format_means = pl.DataFrame({"format": [], "Xi": []})
+            return df_hist, format_means, 0.0, None, None
+
         # Calculate Y for history
         df_hist = NumericalEngine.calculate_actual_score(df_hist)
         
@@ -72,12 +87,16 @@ class NumericalEngine:
                 # Lookup
                 xi_val = match_format["Xi"][0]
                 print(f"[NumericalEngine] Format '{f_format}' Found in history. Lookup Xi: {xi_val:.4f}")
-            else:
+            elif model is not None and scaler is not None:
                 # Cold Start (Predict using ML)
                 cur_features = np.array([[row["impressions"], row["engagement_rate"]]])
                 cur_scaled = scaler.transform(cur_features)
                 xi_val = model.predict(cur_scaled)[0]
                 print(f"[NumericalEngine] COLD START for format '{f_format}'. Predicted Xi via ML: {xi_val:.4f}")
+            else:
+                # Extreme Cold Start: No ML model available due to lack of historical data
+                xi_val = row["Y"] # Fallback to using its own Y as baseline
+                print(f"[NumericalEngine] EXTREME COLD START. No history available. Fallback Xi: {xi_val:.4f}")
             
             X_cur.append(xi_val)
             

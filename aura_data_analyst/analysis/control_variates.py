@@ -5,9 +5,9 @@ class ControlVariates:
     """Control Variates Adjustment"""
     
     @staticmethod
-    def calculate_theta(df: pl.DataFrame, x_col="X", y_col="Y") -> float:
+    def calculate_theta(df: pl.DataFrame, x_col="X_hist", y_col="Y") -> float:
         if len(df) < 2:
-            return 0.35 # Hardcode if insufficient data
+            return 0.0 # No variance reduction possible tracking
         
         x = df[x_col].to_numpy()
         y = df[y_col].to_numpy()
@@ -30,11 +30,17 @@ class ControlVariates:
     @staticmethod
     def calculate_ci(df: pl.DataFrame, theta: float, x_col="X_hist") -> tuple:
         var_y = df["Y"].var() if len(df) > 1 else 0
-        var_x = df[x_col].var() if len(df) > 1 else 0
-        cov_xy = np.cov(df[x_col].to_numpy(), df["Y"].to_numpy())[0, 1] if len(df) > 1 else 0
         
-        # Var(Y_adj) = Var(Y) + theta^2 * Var(X) - 2 * theta * Cov(X, Y)
-        var_y_adj = var_y + (theta**2 * var_x) - (2 * theta * cov_xy)
+        # Calculate Pearson correlation coefficient rho
+        if len(df) > 1:
+            rho = np.corrcoef(df[x_col].to_numpy(), df["Y"].to_numpy())[0, 1]
+            if np.isnan(rho):
+                rho = 0
+        else:
+            rho = 0
+            
+        # Var(Y_adj) = Var(Y_hist) * (1 - rho^2)
+        var_y_adj = var_y * (1 - rho**2)
         
         # Approximate SE and CI
         n = len(df)
