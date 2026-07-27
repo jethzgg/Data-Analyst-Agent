@@ -214,4 +214,4 @@ __marimo__/
 *.db-journal
 *.db-shm
 *.db-wal
-chroma_db/
+chroma_db/.idea/
