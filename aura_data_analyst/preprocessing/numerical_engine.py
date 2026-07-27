@@ -57,10 +57,10 @@ class NumericalEngine:
         df_hist = df_hist.with_columns(pl.Series("X_hist", predicted_X))
         
         # Format Means (Xi for lookup) & mu_X
-        # Xi: trung bình cumulative score của từng thể loại i
+        # Xi: cumulative mean score for each format category i
         format_means = df_hist.group_by("format").agg(pl.col("X_hist").mean().alias("Xi"))
         
-        # mu_X: trung bình score của tất cả thể loại trong lịch sử
+        # mu_X: global mean score across all formats in history
         mu_X = df_hist["X_hist"].mean()
         df_hist = df_hist.with_columns(pl.lit(mu_X).alias("mu_X"))
         df_hist = df_hist.join(format_means, on="format", how="left")
@@ -86,17 +86,17 @@ class NumericalEngine:
             if len(match_format) > 0:
                 # Lookup
                 xi_val = match_format["Xi"][0]
-                print(f"[NumericalEngine] Format '{f_format}' Found in history. Lookup Xi: {xi_val:.4f}")
+                print(f"Lookup Xi: {xi_val:.4f}")
             elif model is not None and scaler is not None:
                 # Cold Start (Predict using ML)
                 cur_features = np.array([[row["impressions"], row["engagement_rate"]]])
                 cur_scaled = scaler.transform(cur_features)
                 xi_val = model.predict(cur_scaled)[0]
-                print(f"[NumericalEngine] COLD START for format '{f_format}'. Predicted Xi via ML: {xi_val:.4f}")
+                print(f"Predicted Xi via ML: {xi_val:.4f}")
             else:
                 # Extreme Cold Start: No ML model available due to lack of historical data
                 xi_val = row["Y"] # Fallback to using its own Y as baseline
-                print(f"[NumericalEngine] EXTREME COLD START. No history available. Fallback Xi: {xi_val:.4f}")
+                print(f"Fallback Xi: {xi_val:.4f}")
             
             X_cur.append(xi_val)
             
