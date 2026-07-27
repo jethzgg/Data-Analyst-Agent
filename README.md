@@ -80,7 +80,7 @@ pip install https://github.com/jethzgg/Data-Analyst-Agent
 
 ### Cách gọi Agent trong code
 ```python
-from aura_data_analyst import DataAnalystAgent
+from data_analyst import DataAnalystAgent
 
 # 1. Khởi tạo Agent (có thể tuỳ chỉnh API Key và mô hình)
 agent = DataAnalystAgent(

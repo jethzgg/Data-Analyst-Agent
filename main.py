@@ -1,4 +1,4 @@
-from aura_data_analyst.decision_orchestrator import FinalDecisionMatrix
+from data_analyst.decision_orchestrator import FinalDecisionMatrix
 
 def main():
     agent = FinalDecisionMatrix()

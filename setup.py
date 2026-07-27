@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 
 setup(
-    name='Aura-Data-Analyst',
+    name='Data-Analyst',
     version='0.1.0',
     description='Data Analyst Agent for numerical and semantic analysis',
     author='Data Analyst Agent',

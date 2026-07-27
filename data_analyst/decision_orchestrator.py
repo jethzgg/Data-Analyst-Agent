@@ -1,8 +1,8 @@
 import polars as pl
-from aura_data_analyst.collection.mock_data_engine import MockDataEngine
-from aura_data_analyst.preprocessing.numerical_engine import NumericalEngine
-from aura_data_analyst.analysis.control_variates import ControlVariates
-from aura_data_analyst.database.postgres import PostgresDB
+from data_analyst.collection.mock_data_engine import MockDataEngine
+from data_analyst.preprocessing.numerical_engine import NumericalEngine
+from data_analyst.analysis.control_variates import ControlVariates
+from data_analyst.database.postgres import PostgresDB
 
 class FinalDecisionMatrix:
     def __init__(self):
